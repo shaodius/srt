@@ -14,6 +14,8 @@
 #include <sstream>
 #include <utility>
 #include <memory>
+#include <ctime>
+#include <string.h>
 
 #include "apputil.hpp"
 #include "netinet_any.h"
@@ -344,10 +346,17 @@ class SrtStatsJson : public SrtStatsWriter
 public: 
     string WriteStats(int sid, const CBytePerfMon& mon) override 
     { 
+        // Get current system time
+        time_t tt;
+        time (&tt);
+        char timestr [30];
+        strftime(timestr,30,"%F %T",localtime(&tt));
+        
         std::ostringstream output;
         output << "{";
         output << "\"sid\":" << sid << ",";
         output << "\"time\":" << mon.msTimeStamp << ",";
+        output << "\"systime\":\"" << timestr << "\",";
         output << "\"window\":{";
         output << "\"flow\":" << mon.pktFlowWindow << ",";
         output << "\"congestion\":" << mon.pktCongestionWindow << ",";    
@@ -408,10 +417,16 @@ public:
 
     string WriteStats(int sid, const CBytePerfMon& mon) override 
     { 
+        // Get current system time
+        time_t tt;
+        time (&tt);
+        char timestr [30];
+        strftime(timestr,30,"%F %T",localtime(&tt));
+        
         std::ostringstream output;
         if (!first_line_printed)
         {
-            output << "Time,SocketID,pktFlowWindow,pktCongestionWindow,pktFlightSize,";
+            output << "SysTime,Time,SocketID,pktFlowWindow,pktCongestionWindow,pktFlightSize,";
             output << "msRTT,mbpsBandwidth,mbpsMaxBW,pktSent,pktSndLoss,pktSndDrop,";
             output << "pktRetrans,byteSent,byteSndDrop,mbpsSendRate,usPktSndPeriod,";
             output << "pktRecv,pktRcvLoss,pktRcvDrop,pktRcvRetrans,pktRcvBelated,";
@@ -425,6 +440,7 @@ public:
         int int_len = sizeof rcv_latency;
         srt_getsockopt(sid, 0, SRTO_RCVLATENCY, &rcv_latency, &int_len);
 
+        output << timestr << ",";
         output << mon.msTimeStamp << ",";
         output << sid << ",";
         output << mon.pktFlowWindow << ",";
@@ -473,8 +489,12 @@ class SrtStatsCols : public SrtStatsWriter
 public: 
     string WriteStats(int sid, const CBytePerfMon& mon) override 
     { 
+        // Get current system time
+        time_t tt;
+        time (&tt);
+        
         std::ostringstream output;
-        output << "======= SRT STATS: sid=" << sid << endl;
+        output << "======= SRT STATS: sid=" << sid  << " System Time: " << strtok(ctime(&tt),"\n") << endl;
         output << "PACKETS     SENT: " << setw(11) << mon.pktSent            << "  RECEIVED:   " << setw(11) << mon.pktRecv              << endl;
         output << "LOST PKT    SENT: " << setw(11) << mon.pktSndLoss         << "  RECEIVED:   " << setw(11) << mon.pktRcvLoss           << endl;
         output << "REXMIT      SENT: " << setw(11) << mon.pktRetrans         << "  RECEIVED:   " << setw(11) << mon.pktRcvRetrans        << endl;
